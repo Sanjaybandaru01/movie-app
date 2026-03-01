@@ -1,0 +1,114 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #111;
+  color: white;
+}
+
+nav {
+  background: #000;
+  padding: 15px;
+  text-align: center;
+}
+
+.home-container {
+  padding: 20px;
+}
+
+.search-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+.search-section input {
+  width: 300px;
+  padding: 10px;
+  border-radius: 25px 0 0 25px;
+  border: none;
+}
+
+.search-section button {
+  padding: 10px 15px;
+  border: none;
+  background: red;
+  color: white;
+  border-radius: 0 25px 25px 0;
+  cursor: pointer;
+}
+
+.filters {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+select {
+  padding: 8px;
+  border-radius: 20px;
+}
+
+.movie-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 15px;
+}
+
+.movie-card {
+  background: #222;
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: center;
+  transition: 0.3s;
+}
+
+.movie-card:hover {
+  transform: scale(1.05);
+}
+
+.movie-card img {
+  width: 100%;
+  border-radius: 10px;
+}
+
+.details-page {
+  margin-top: 30px;
+  background: #222;
+  padding: 20px;
+  border-radius: 10px;
+}
+
+.hidden {
+  display: none;
+}
+
+.platform-logo {
+  width: 40px;
+  margin: 5px;
+}
+.details-container {
+  padding: 30px;
+}
+
+.details-card {
+  display: flex;
+  gap: 30px;
+  flex-wrap: wrap;
+}
+
+.details-poster {
+  width: 300px;
+  border-radius: 10px;
+}
+
+.details-info {
+  max-width: 600px;
+}
+
+.platform-logo {
+  width: 50px;
+  margin-right: 10px;
+  cursor: pointer;
+}

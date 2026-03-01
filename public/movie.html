@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Movie Details</title>
+  <link rel="stylesheet" href="style.css">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body>
+
+<nav class="navbar">
+  <h2 style="cursor:pointer;" onclick="goHome()">🎬 MovieHub</h2>
+  <button class="back-btn" onclick="goHome()">⬅ Back</button>
+</nav>
+
+<div class="details-container" id="movieDetails">
+  <p class="loading">Loading movie details...</p>
+</div>
+
+<script>
+
+function goHome() {
+  window.location.href = "/";
+}
+
+// ================= LOAD MOVIE DETAILS =================
+async function loadMovie() {
+
+  try {
+
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
+
+    if (!id) {
+      document.getElementById("movieDetails").innerHTML =
+        "<p>Movie ID not found</p>";
+      return;
+    }
+
+    const res = await fetch(`/movie/${id}`);
+    const movie = await res.json();
+
+    if (!movie) return;
+
+    const cast = movie.cast && movie.cast.length
+      ? movie.cast.map(c => c.name).join(", ")
+      : "N/A";
+
+    // ================= PLATFORM LOGIC =================
+    let platformHTML = "";
+
+    // 1️⃣ OTT Platforms available
+    if (movie.flatrate && movie.flatrate.length > 0) {
+
+      platformHTML = movie.flatrate.map(p => `
+        <a href="https://www.google.com/search?q=${p.provider_name}+watch"
+           target="_blank">
+          <img class="platform-logo"
+               src="https://image.tmdb.org/t/p/w45${p.logo_path}">
+        </a>
+      `).join("");
+
+    }
+
+    // 2️⃣ YouTube fallback
+    else if (movie.youtube) {
+
+      platformHTML = `
+        <a href="https://www.youtube.com/results?search_query=${movie.title}+full+movie"
+           target="_blank"
+           class="youtube-link">
+           ▶ Available on YouTube
+        </a>
+      `;
+
+    }
+
+    // 3️⃣ Not available
+    else {
+      platformHTML = `<p class="not-available">Not Available</p>`;
+    }
+
+    // ================= RENDER HTML =================
+    document.getElementById("movieDetails").innerHTML = `
+      <div class="details-card">
+
+        <img class="details-poster"
+          src="https://image.tmdb.org/t/p/w400${movie.poster_path || ''}"
+          alt="${movie.title}"
+          onerror="this.style.display='none'">
+
+        <div class="details-info">
+
+          <h2>${movie.title || "N/A"}</h2>
+
+          <p><strong>Date:</strong> ${movie.release_date || "N/A"}</p>
+
+          <p><strong>Genres:</strong>
+            ${movie.genres && movie.genres.length
+              ? movie.genres.map(g => g.name).join(", ")
+              : "N/A"}
+          </p>
+
+          <p><strong>Description:</strong>
+            ${movie.overview || "No description available."}
+          </p>
+
+          <p><strong>Cast:</strong>
+            ${cast}
+          </p>
+
+          <h4>Available On:</h4>
+
+          <div class="platforms">
+            ${platformHTML}
+          </div>
+
+        </div>
+
+      </div>
+    `;
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById("movieDetails").innerHTML =
+      "<p>Error loading movie details</p>";
+  }
+}
+
+loadMovie();
+
+</script>
+
+</body>
+</html>

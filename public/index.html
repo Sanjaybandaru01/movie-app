@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MovieHub</title>
+  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav>
+    <h2>🎬 MovieHub</h2>
+  </nav>
+
+  <div class="home-container">
+
+    <!-- Search Section -->
+    <div class="search-section">
+      <input type="text" id="movieInput" placeholder="Search movie...">
+      <button id="searchBtn">Search</button>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filters">
+
+      <!-- Genre Dropdown -->
+      <select id="genreSelect">
+        <option value="">Select Genre</option>
+      </select>
+
+      <!-- Language Dropdown -->
+      <select id="languageSelect">
+        <option value="">Select Language</option>
+        <option value="en">English</option>
+        <option value="hi">Hindi</option>
+        <option value="te">Telugu</option>
+      </select>
+
+    </div>
+
+    <!-- Latest Updates Title -->
+    <h3 id="sectionTitle">Latest Updates</h3>
+
+    <!-- Movies Grid -->
+    <div id="movieGrid" class="movie-grid"></div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
