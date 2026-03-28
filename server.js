@@ -32,17 +32,27 @@ app.get("/search", async (req, res) => {
 // ================= LATEST MOVIES =================
 app.get("/latest", async (req, res) => {
   try {
+    const today = new Date();
+    const lastMonth = new Date();
+    lastMonth.setDate(today.getDate() - 15);
+    const formatDate = (date) => date.toISOString().split("T")[0];
+
     const response = await axios.get(
-      `${BASE_URL}/movie/now_playing?api_key=${API_KEY}`
+      `${BASE_URL}/discover/movie?api_key=${API_KEY}` +
+      `&primary_release_date.gte=${formatDate(lastMonth)}` +
+      `&primary_release_date.lte=${formatDate(today)}` +
+      `&sort_by=primary_release_date.desc` +
+      `&region=IN`
     );
 
-    res.json(response.data.results.slice(0, 20));
+    res.json(response.data.results.slice(0, 12));
 
   } catch (err) {
     console.error(err.message);
     res.json([]);
   }
 });
+
 // ================= GET GENRES =================
 app.get("/genres", async (req, res) => {
   try {
@@ -64,30 +74,41 @@ app.get("/filter", async (req, res) => {
   const { genre, language } = req.query;
 
   try {
-    let url = `${BASE_URL}/discover/movie?api_key=${API_KEY}`;
+    let movies = [];
 
-    if (genre) {
-      url += `&with_genres=${genre}`;
+    // 🔥 Fetch multiple pages for more data
+    for (let page = 1; page <= 3; page++) {
+      let url = `${BASE_URL}/discover/movie?api_key=${API_KEY}&region=IN&page=${page}`;
+
+      if (genre) {
+        url += `&with_genres=${genre}`;
+      }
+
+      if (language) {
+        url += `&with_original_language=${language}`;
+      }
+
+      // ✅ Sort latest first
+      url += `&sort_by=primary_release_date.desc`;
+
+      const response = await axios.get(url);
+
+      const today = new Date().toISOString().split("T")[0];
+
+const filtered = response.data.results.filter(m =>
+  m.release_date && m.release_date <= today
+);
+
+movies = movies.concat(filtered);
     }
 
-    if (language) {
-      url += `&with_original_language=${language}`;
-    }
+    // 🔥 Remove duplicates (important)
+    const uniqueMovies = Array.from(
+      new Map(movies.map(m => [m.id, m])).values()
+    );
 
-    url += `&sort_by=primary_release_date.desc`;
-
-    let response = await axios.get(url);
-    let movies = response.data.results;
-
-    // ✅ Fallback if empty
-    if (!movies || movies.length === 0) {
-      const fallback = await axios.get(
-        `${BASE_URL}/movie/popular?api_key=${API_KEY}`
-      );
-      movies = fallback.data.results;
-    }
-
-    res.json(movies.slice(0, 20));
+    // ✅ Take top 12 latest movies
+    res.json(uniqueMovies.slice(0, 12));
 
   } catch (err) {
     console.error(err.message);
