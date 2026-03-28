@@ -32,34 +32,23 @@ app.get("/search", async (req, res) => {
 // ================= LATEST MOVIES =================
 app.get("/latest", async (req, res) => {
   try {
-    let movies = [];
-
-    for (let page = 1; page <= 5; page++) {
-      const response = await axios.get(
-        `${BASE_URL}/discover/movie?api_key=${API_KEY}&page=${page}&sort_by=primary_release_date.desc`
-      );
-
-      movies = movies.concat(response.data.results);
-    }
-
-    const uniqueMovies = Array.from(
-      new Map(movies.map(m => [m.id, m])).values()
+    const response = await axios.get(
+      `${BASE_URL}/discover/movie?api_key=${API_KEY}&sort_by=primary_release_date.desc`
     );
 
     const today = new Date().toISOString().split("T")[0];
 
-    const released = uniqueMovies
-      .filter(m => m.release_date && m.release_date <= today)
-      .sort((a, b) => new Date(b.release_date) - new Date(a.release_date));
+    const movies = response.data.results.filter(m =>
+      m.release_date && m.release_date <= today
+    );
 
-    res.json(released.slice(0, 20));
+    res.json(movies.slice(0, 20));
 
   } catch (err) {
     console.error(err.message);
     res.json([]);
   }
 });
-
 // ================= GET GENRES =================
 app.get("/genres", async (req, res) => {
   try {
@@ -81,50 +70,25 @@ app.get("/filter", async (req, res) => {
   const { genre, language } = req.query;
 
   try {
-    let movies = [];
+    let url = `${BASE_URL}/discover/movie?api_key=${API_KEY}&sort_by=primary_release_date.desc`;
 
-    // Fetch more pages for enough data
-    for (let page = 1; page <= 5; page++) {
-      const response = await axios.get(
-        `${BASE_URL}/discover/movie?api_key=${API_KEY}&page=${page}&sort_by=primary_release_date.desc`
-      );
-
-      movies = movies.concat(response.data.results);
+    if (genre) {
+      url += `&with_genres=${genre}`;
     }
 
-    // Remove duplicates
-    const uniqueMovies = Array.from(
-      new Map(movies.map(m => [m.id, m])).values()
-    );
+    if (language) {
+      url += `&with_original_language=${language}`;
+    }
+
+    const response = await axios.get(url);
 
     const today = new Date().toISOString().split("T")[0];
 
-    let filtered = uniqueMovies;
-
-    // ✅ Remove future movies
-    filtered = filtered.filter(m =>
+    const movies = response.data.results.filter(m =>
       m.release_date && m.release_date <= today
     );
 
-    // ✅ Apply language filter (MANUAL)
-    if (language) {
-      filtered = filtered.filter(m => m.original_language === language);
-    }
-
-    // ✅ Apply genre filter (MANUAL)
-    if (genre) {
-      filtered = filtered.filter(m =>
-        m.genre_ids && m.genre_ids.includes(Number(genre))
-      );
-    }
-
-    // ✅ Sort latest → old
-    filtered.sort(
-      (a, b) => new Date(b.release_date) - new Date(a.release_date)
-    );
-
-    // ✅ Always return enough movies
-    res.json(filtered.slice(0, 20));
+    res.json(movies.slice(0, 20));
 
   } catch (err) {
     console.error(err.message);
