@@ -33,16 +33,10 @@ app.get("/search", async (req, res) => {
 app.get("/latest", async (req, res) => {
   try {
     const response = await axios.get(
-      `${BASE_URL}/discover/movie?api_key=${API_KEY}&sort_by=primary_release_date.desc`
+      `${BASE_URL}/movie/now_playing?api_key=${API_KEY}`
     );
 
-    const today = new Date().toISOString().split("T")[0];
-
-    const movies = response.data.results.filter(m =>
-      m.release_date && m.release_date <= today
-    );
-
-    res.json(movies.slice(0, 20));
+    res.json(response.data.results.slice(0, 20));
 
   } catch (err) {
     console.error(err.message);
@@ -70,7 +64,7 @@ app.get("/filter", async (req, res) => {
   const { genre, language } = req.query;
 
   try {
-    let url = `${BASE_URL}/discover/movie?api_key=${API_KEY}&sort_by=primary_release_date.desc`;
+    let url = `${BASE_URL}/discover/movie?api_key=${API_KEY}`;
 
     if (genre) {
       url += `&with_genres=${genre}`;
@@ -80,13 +74,18 @@ app.get("/filter", async (req, res) => {
       url += `&with_original_language=${language}`;
     }
 
-    const response = await axios.get(url);
+    url += `&sort_by=primary_release_date.desc`;
 
-    const today = new Date().toISOString().split("T")[0];
+    let response = await axios.get(url);
+    let movies = response.data.results;
 
-    const movies = response.data.results.filter(m =>
-      m.release_date && m.release_date <= today
-    );
+    // ✅ Fallback if empty
+    if (!movies || movies.length === 0) {
+      const fallback = await axios.get(
+        `${BASE_URL}/movie/popular?api_key=${API_KEY}`
+      );
+      movies = fallback.data.results;
+    }
 
     res.json(movies.slice(0, 20));
 
