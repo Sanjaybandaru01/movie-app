@@ -18,34 +18,56 @@ app.get("/search", async (req, res) => {
 
   try {
     const response = await axios.get(
-      `${BASE_URL}/search/movie?api_key=${API_KEY}&query=${movieName}&region=IN`
+      `${BASE_URL}/search/movie?api_key=${API_KEY}&query=${movieName}`
     );
 
-    res.json(response.data.results.slice(0, 12));
+    res.json(response.data.results.slice(0, 20));
 
   } catch (err) {
     console.error(err.message);
-    res.status(500).json({ error: "Error fetching search results" });
+    res.json([]);
   }
 });
 
 // ================= LATEST MOVIES =================
 app.get("/latest", async (req, res) => {
   try {
-    const today = new Date();
-    const lastMonth = new Date();
-    lastMonth.setDate(today.getDate() - 15);
-    const formatDate = (date) => date.toISOString().split("T")[0];
+    let movies = [];
 
-    const response = await axios.get(
-      `${BASE_URL}/discover/movie?api_key=${API_KEY}` +
-      `&primary_release_date.gte=${formatDate(lastMonth)}` +
-      `&primary_release_date.lte=${formatDate(today)}` +
-      `&sort_by=primary_release_date.desc` +
-      `&region=IN`
+    // Get latest movies
+    const latestRes = await axios.get(
+      `${BASE_URL}/discover/movie?api_key=${API_KEY}&sort_by=primary_release_date.desc`
     );
 
-    res.json(response.data.results.slice(0, 12));
+    movies = latestRes.data.results;
+
+    const today = new Date().toISOString().split("T")[0];
+
+    // Remove future movies
+    let filtered = movies.filter(m =>
+      m.release_date && m.release_date <= today
+    );
+
+    // If less, add popular movies
+    if (filtered.length < 20) {
+      const popularRes = await axios.get(
+        `${BASE_URL}/movie/popular?api_key=${API_KEY}`
+      );
+
+      filtered = filtered.concat(popularRes.data.results);
+    }
+
+    // Remove duplicates
+    const unique = Array.from(
+      new Map(filtered.map(m => [m.id, m])).values()
+    );
+
+    // Sort latest → old
+    unique.sort(
+      (a, b) => new Date(b.release_date) - new Date(a.release_date)
+    );
+
+    res.json(unique.slice(0, 20));
 
   } catch (err) {
     console.error(err.message);
@@ -64,57 +86,69 @@ app.get("/genres", async (req, res) => {
 
   } catch (err) {
     console.error(err.message);
-    res.status(500).json({ error: "Error fetching genres" });
+    res.json([]);
   }
 });
 
-// ================= COMBINED FILTER (GENRE + LANGUAGE) =================
-// ================= COMBINED FILTER (GENRE + LANGUAGE) =================
+// ================= FILTER =================
 app.get("/filter", async (req, res) => {
   const { genre, language } = req.query;
 
   try {
     let movies = [];
 
-    // 🔥 Fetch multiple pages for more data
-    for (let page = 1; page <= 3; page++) {
-      let url = `${BASE_URL}/discover/movie?api_key=${API_KEY}&region=IN&page=${page}`;
-
-      if (genre) {
-        url += `&with_genres=${genre}`;
-      }
-
-      if (language) {
-        url += `&with_original_language=${language}`;
-      }
-
-      // ✅ Sort latest first
-      url += `&sort_by=primary_release_date.desc`;
-
-      const response = await axios.get(url);
-
-      const today = new Date().toISOString().split("T")[0];
-
-const filtered = response.data.results.filter(m =>
-  m.release_date && m.release_date <= today
-);
-
-movies = movies.concat(filtered);
-    }
-
-    // 🔥 Remove duplicates (important)
-    const uniqueMovies = Array.from(
-      new Map(movies.map(m => [m.id, m])).values()
+    const response = await axios.get(
+      `${BASE_URL}/discover/movie?api_key=${API_KEY}&sort_by=primary_release_date.desc`
     );
 
-    // ✅ Take top 12 latest movies
-    res.json(uniqueMovies.slice(0, 12));
+    movies = response.data.results;
+
+    const today = new Date().toISOString().split("T")[0];
+
+    // Remove future movies
+    let filtered = movies.filter(m =>
+      m.release_date && m.release_date <= today
+    );
+
+    // Apply language filter
+    if (language) {
+      filtered = filtered.filter(m => m.original_language === language);
+    }
+
+    // Apply genre filter
+    if (genre) {
+      filtered = filtered.filter(m =>
+        m.genre_ids && m.genre_ids.includes(Number(genre))
+      );
+    }
+
+    // If less results → add popular
+    if (filtered.length < 20) {
+      const popularRes = await axios.get(
+        `${BASE_URL}/movie/popular?api_key=${API_KEY}`
+      );
+
+      filtered = filtered.concat(popularRes.data.results);
+    }
+
+    // Remove duplicates
+    const unique = Array.from(
+      new Map(filtered.map(m => [m.id, m])).values()
+    );
+
+    // Sort latest → old
+    unique.sort(
+      (a, b) => new Date(b.release_date) - new Date(a.release_date)
+    );
+
+    res.json(unique.slice(0, 20));
 
   } catch (err) {
     console.error(err.message);
     res.json([]);
   }
 });
+
 // ================= MOVIE DETAILS =================
 app.get("/movie/:id", async (req, res) => {
   const movieId = req.params.id;
@@ -138,7 +172,6 @@ app.get("/movie/:id", async (req, res) => {
     const rent = indiaProviders.rent || [];
     const buy = indiaProviders.buy || [];
 
-    // Check if YouTube exists in rent or buy
     const youtubeProvider =
       [...rent, ...buy].find(p =>
         p.provider_name.toLowerCase().includes("youtube")
@@ -158,7 +191,7 @@ app.get("/movie/:id", async (req, res) => {
 
   } catch (err) {
     console.error(err.message);
-    res.status(500).json({ error: "Error fetching movie details" });
+    res.json({});
   }
 });
 
