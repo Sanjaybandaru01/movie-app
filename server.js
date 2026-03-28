@@ -18,56 +18,31 @@ app.get("/search", async (req, res) => {
 
   try {
     const response = await axios.get(
-      `${BASE_URL}/search/movie?api_key=${API_KEY}&query=${movieName}`
+      `${BASE_URL}/search/movie?api_key=${API_KEY}&query=${movieName}&region=IN`
     );
 
-    res.json(response.data.results.slice(0, 20));
+    res.json(response.data.results.slice(0, 12));
 
   } catch (err) {
     console.error(err.message);
-    res.json([]);
+    res.status(500).json({ error: "Error fetching search results" });
   }
 });
 
 // ================= LATEST MOVIES =================
 app.get("/latest", async (req, res) => {
   try {
-    let movies = [];
-
-    // Get latest movies
-    const latestRes = await axios.get(
-      `${BASE_URL}/discover/movie?api_key=${API_KEY}&sort_by=primary_release_date.desc`
+    const response = await axios.get(
+      `${BASE_URL}/movie/now_playing?api_key=${API_KEY}`
     );
-
-    movies = latestRes.data.results;
 
     const today = new Date().toISOString().split("T")[0];
 
-    // Remove future movies
-    let filtered = movies.filter(m =>
+    const movies = response.data.results.filter(m =>
       m.release_date && m.release_date <= today
     );
 
-    // If less, add popular movies
-    if (filtered.length < 20) {
-      const popularRes = await axios.get(
-        `${BASE_URL}/movie/popular?api_key=${API_KEY}`
-      );
-
-      filtered = filtered.concat(popularRes.data.results);
-    }
-
-    // Remove duplicates
-    const unique = Array.from(
-      new Map(filtered.map(m => [m.id, m])).values()
-    );
-
-    // Sort latest → old
-    unique.sort(
-      (a, b) => new Date(b.release_date) - new Date(a.release_date)
-    );
-
-    res.json(unique.slice(0, 20));
+    res.json(movies.slice(0, 20));
 
   } catch (err) {
     console.error(err.message);
@@ -86,18 +61,18 @@ app.get("/genres", async (req, res) => {
 
   } catch (err) {
     console.error(err.message);
-    res.json([]);
+    res.status(500).json({ error: "Error fetching genres" });
   }
 });
 
-// ================= FILTER =================
+// ================= COMBINED FILTER (GENRE + LANGUAGE) =================
 app.get("/filter", async (req, res) => {
   const { genre, language } = req.query;
 
   try {
     let movies = [];
 
-    // 🔹 Step 1: Get filtered movies
+    // 🔹 Step 1: Fetch latest movies (no restrictions)
     const response = await axios.get(
       `${BASE_URL}/discover/movie?api_key=${API_KEY}&sort_by=primary_release_date.desc`
     );
@@ -108,28 +83,25 @@ app.get("/filter", async (req, res) => {
       m.release_date && m.release_date <= today
     );
 
-    // Apply language
+    // 🔹 Apply language filter
     if (language) {
       filtered = filtered.filter(m => m.original_language === language);
     }
 
-    // Apply genre
+    // 🔹 Apply genre filter
     if (genre) {
       filtered = filtered.filter(m =>
         m.genre_ids && m.genre_ids.includes(Number(genre))
       );
     }
 
-    // 🔹 Step 2: If less, fill with popular
+    // 🔹 Step 2: Fill with popular if less
     if (filtered.length < 20) {
       const popularRes = await axios.get(
         `${BASE_URL}/movie/popular?api_key=${API_KEY}`
       );
 
-      const popular = popularRes.data.results;
-
-      // Add only new movies (no duplicates)
-      popular.forEach(p => {
+      popularRes.data.results.forEach(p => {
         if (!filtered.find(m => m.id === p.id)) {
           filtered.push(p);
         }
@@ -148,7 +120,6 @@ app.get("/filter", async (req, res) => {
     res.json([]);
   }
 });
-
 // ================= MOVIE DETAILS =================
 app.get("/movie/:id", async (req, res) => {
   const movieId = req.params.id;
@@ -172,6 +143,7 @@ app.get("/movie/:id", async (req, res) => {
     const rent = indiaProviders.rent || [];
     const buy = indiaProviders.buy || [];
 
+    // Check if YouTube exists in rent or buy
     const youtubeProvider =
       [...rent, ...buy].find(p =>
         p.provider_name.toLowerCase().includes("youtube")
@@ -191,7 +163,7 @@ app.get("/movie/:id", async (req, res) => {
 
   } catch (err) {
     console.error(err.message);
-    res.json({});
+    res.status(500).json({ error: "Error fetching movie details" });
   }
 });
 
