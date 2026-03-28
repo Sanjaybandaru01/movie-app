@@ -97,51 +97,51 @@ app.get("/filter", async (req, res) => {
   try {
     let movies = [];
 
+    // 🔹 Step 1: Get filtered movies
     const response = await axios.get(
       `${BASE_URL}/discover/movie?api_key=${API_KEY}&sort_by=primary_release_date.desc`
     );
 
-    movies = response.data.results;
-
     const today = new Date().toISOString().split("T")[0];
 
-    // Remove future movies
-    let filtered = movies.filter(m =>
+    let filtered = response.data.results.filter(m =>
       m.release_date && m.release_date <= today
     );
 
-    // Apply language filter
+    // Apply language
     if (language) {
       filtered = filtered.filter(m => m.original_language === language);
     }
 
-    // Apply genre filter
+    // Apply genre
     if (genre) {
       filtered = filtered.filter(m =>
         m.genre_ids && m.genre_ids.includes(Number(genre))
       );
     }
 
-    // If less results → add popular
+    // 🔹 Step 2: If less, fill with popular
     if (filtered.length < 20) {
       const popularRes = await axios.get(
         `${BASE_URL}/movie/popular?api_key=${API_KEY}`
       );
 
-      filtered = filtered.concat(popularRes.data.results);
+      const popular = popularRes.data.results;
+
+      // Add only new movies (no duplicates)
+      popular.forEach(p => {
+        if (!filtered.find(m => m.id === p.id)) {
+          filtered.push(p);
+        }
+      });
     }
 
-    // Remove duplicates
-    const unique = Array.from(
-      new Map(filtered.map(m => [m.id, m])).values()
-    );
-
-    // Sort latest → old
-    unique.sort(
+    // 🔹 Step 3: Sort latest → old
+    filtered.sort(
       (a, b) => new Date(b.release_date) - new Date(a.release_date)
     );
 
-    res.json(unique.slice(0, 20));
+    res.json(filtered.slice(0, 20));
 
   } catch (err) {
     console.error(err.message);
