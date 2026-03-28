@@ -32,21 +32,24 @@ app.get("/search", async (req, res) => {
 // ================= LATEST MOVIES =================
 app.get("/latest", async (req, res) => {
   try {
+    const today = new Date();
+    const lastMonth = new Date();
+    lastMonth.setDate(today.getDate() - 15);
+    const formatDate = (date) => date.toISOString().split("T")[0];
 
     const response = await axios.get(
       `${BASE_URL}/discover/movie?api_key=${API_KEY}` +
-      `&watch_region=IN` +
-      `&with_watch_monetization_types=flatrate` +
-      `&sort_by=release_date.desc`
+      `&primary_release_date.gte=${formatDate(lastMonth)}` +
+      `&primary_release_date.lte=${formatDate(today)}` +
+      `&sort_by=primary_release_date.desc` +
+      `&region=IN`
     );
 
     res.json(response.data.results.slice(0, 12));
 
   } catch (err) {
     console.error(err.message);
-    res.status(500).json({
-      error: "Error fetching latest OTT movies"
-    });
+    res.json([]);
   }
 });
 
