@@ -51,9 +51,10 @@ select {
 
 .movie-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(5, 1fr);
   gap: 15px;
 }
+
 
 .movie-card {
   background: #222;
@@ -111,4 +112,15 @@ select {
   width: 50px;
   margin-right: 10px;
   cursor: pointer;
+}
+@media (max-width: 1024px) {
+  .movie-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .movie-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }

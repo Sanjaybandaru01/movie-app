@@ -45,7 +45,7 @@ app.get("/latest", async (req, res) => {
       `&region=IN`
     );
 
-    res.json(response.data.results.slice(0, 12));
+    res.json(uniqueMovies.slice(0, 20));
 
   } catch (err) {
     console.error(err.message);
@@ -93,7 +93,13 @@ app.get("/filter", async (req, res) => {
 
       const response = await axios.get(url);
 
-      movies = movies.concat(response.data.results);
+      const today = new Date().toISOString().split("T")[0];
+
+const filtered = response.data.results.filter(m =>
+  m.release_date && m.release_date <= today
+);
+
+movies = movies.concat(filtered);
     }
 
     // 🔥 Remove duplicates (important)
