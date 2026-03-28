@@ -59,13 +59,15 @@ async function loadGenres() {
 const genreSelect = document.getElementById("genreSelect");
 const languageSelect = document.getElementById("languageSelect");
 
+// Trigger filter when either changes
 genreSelect.addEventListener("change", filterMovies);
 languageSelect.addEventListener("change", filterMovies);
 
 async function filterMovies() {
-  const genre = genreSelect.value;
-  const language = languageSelect.value;
+  const genre = genreSelect.value || "";
+  const language = languageSelect.value || "";
 
+  // If no filters → show latest again
   if (!genre && !language) {
     loadLatestMovies();
     return;
@@ -76,7 +78,7 @@ async function filterMovies() {
     const data = await res.json();
 
     document.getElementById("sectionTitle").innerText =
-      "Filtered Movies";
+      "Filtered Movies (Latest First)";
 
     displayMovies(data);
   } catch (err) {

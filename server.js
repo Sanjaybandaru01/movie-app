@@ -69,10 +69,17 @@ app.get("/genres", async (req, res) => {
 });
 
 // ================= COMBINED FILTER (GENRE + LANGUAGE) =================
+// ================= COMBINED FILTER (GENRE + LANGUAGE) =================
 app.get("/filter", async (req, res) => {
   const { genre, language } = req.query;
 
   try {
+    const today = new Date();
+    const lastMonth = new Date();
+    lastMonth.setDate(today.getDate() - 15);
+
+    const formatDate = (date) => date.toISOString().split("T")[0];
+
     let url = `${BASE_URL}/discover/movie?api_key=${API_KEY}&region=IN`;
 
     if (genre) {
@@ -83,17 +90,21 @@ app.get("/filter", async (req, res) => {
       url += `&with_original_language=${language}`;
     }
 
-    url += `&sort_by=popularity.desc`;
-    url += `&with_watch_monetization_types=flatrate`;
+    // ✅ Add recent releases filter
+    url += `&primary_release_date.gte=${formatDate(lastMonth)}`;
+    url += `&primary_release_date.lte=${formatDate(today)}`;
+
+    // ✅ Change sorting → NEW → OLD
+    url += `&sort_by=primary_release_date.desc`;
 
     const response = await axios.get(url);
 
     let movies = response.data.results.slice(0, 12);
 
-    // ⭐ Fallback recommendation if filter result is empty
+    // ⭐ Fallback if no movies
     if (!movies.length) {
       const fallback = await axios.get(
-        `${BASE_URL}/discover/movie?api_key=${API_KEY}&region=IN&sort_by=popularity.desc`
+        `${BASE_URL}/discover/movie?api_key=${API_KEY}&region=IN&sort_by=primary_release_date.desc`
       );
 
       movies = fallback.data.results.slice(0, 12);
