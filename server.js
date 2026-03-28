@@ -72,30 +72,36 @@ app.get("/filter", async (req, res) => {
   try {
     let movies = [];
 
-    // 🔹 Step 1: Fetch latest movies (no restrictions)
-    const response = await axios.get(
-      `${BASE_URL}/discover/movie?api_key=${API_KEY}&sort_by=primary_release_date.desc`
-    );
+    // 🔥 Step 1: Fetch filtered data directly from TMDB
+    for (let page = 1; page <= 3; page++) {
+      let url = `${BASE_URL}/discover/movie?api_key=${API_KEY}&page=${page}&sort_by=primary_release_date.desc`;
+
+      if (genre) {
+        url += `&with_genres=${genre}`;
+      }
+
+      if (language) {
+        url += `&with_original_language=${language}`;
+      }
+
+      const response = await axios.get(url);
+
+      movies = movies.concat(response.data.results);
+    }
 
     const today = new Date().toISOString().split("T")[0];
 
-    let filtered = response.data.results.filter(m =>
+    // 🔥 Step 2: Remove future movies
+    let filtered = movies.filter(m =>
       m.release_date && m.release_date <= today
     );
 
-    // 🔹 Apply language filter
-    if (language) {
-      filtered = filtered.filter(m => m.original_language === language);
-    }
+    // 🔥 Step 3: Remove duplicates
+    filtered = Array.from(
+      new Map(filtered.map(m => [m.id, m])).values()
+    );
 
-    // 🔹 Apply genre filter
-    if (genre) {
-      filtered = filtered.filter(m =>
-        m.genre_ids && m.genre_ids.includes(Number(genre))
-      );
-    }
-
-    // 🔹 Step 2: Fill with popular if less
+    // 🔥 Step 4: If less, fill with popular (NO FILTER here)
     if (filtered.length < 20) {
       const popularRes = await axios.get(
         `${BASE_URL}/movie/popular?api_key=${API_KEY}`
@@ -108,7 +114,7 @@ app.get("/filter", async (req, res) => {
       });
     }
 
-    // 🔹 Step 3: Sort latest → old
+    // 🔥 Step 5: Sort latest → old
     filtered.sort(
       (a, b) => new Date(b.release_date) - new Date(a.release_date)
     );
