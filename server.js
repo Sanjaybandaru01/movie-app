@@ -74,12 +74,6 @@ app.get("/filter", async (req, res) => {
   const { genre, language } = req.query;
 
   try {
-    const today = new Date();
-    const lastMonth = new Date();
-    lastMonth.setDate(today.getDate() - 15);
-
-    const formatDate = (date) => date.toISOString().split("T")[0];
-
     let url = `${BASE_URL}/discover/movie?api_key=${API_KEY}&region=IN`;
 
     if (genre) {
@@ -90,21 +84,17 @@ app.get("/filter", async (req, res) => {
       url += `&with_original_language=${language}`;
     }
 
-    // ✅ Add recent releases filter
-    url += `&primary_release_date.gte=${formatDate(lastMonth)}`;
-    url += `&primary_release_date.lte=${formatDate(today)}`;
-
-    // ✅ Change sorting → NEW → OLD
+    // ✅ Only sorting (no strict date filter)
     url += `&sort_by=primary_release_date.desc`;
 
     const response = await axios.get(url);
 
     let movies = response.data.results.slice(0, 12);
 
-    // ⭐ Fallback if no movies
+    // ✅ Fallback if empty
     if (!movies.length) {
       const fallback = await axios.get(
-        `${BASE_URL}/discover/movie?api_key=${API_KEY}&region=IN&sort_by=primary_release_date.desc`
+        `${BASE_URL}/discover/movie?api_key=${API_KEY}&region=IN&sort_by=popularity.desc`
       );
 
       movies = fallback.data.results.slice(0, 12);
