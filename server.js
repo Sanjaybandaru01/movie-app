@@ -34,33 +34,25 @@ app.get("/latest", async (req, res) => {
   try {
     let movies = [];
 
-    // Fetch multiple pages
-    for (let page = 1; page <= 3; page++) {
+    for (let page = 1; page <= 5; page++) {
       const response = await axios.get(
-        `${BASE_URL}/discover/movie?api_key=${API_KEY}&region=IN&page=${page}&sort_by=primary_release_date.desc`
+        `${BASE_URL}/discover/movie?api_key=${API_KEY}&page=${page}&sort_by=primary_release_date.desc`
       );
 
       movies = movies.concat(response.data.results);
     }
 
-    // Remove duplicates
     const uniqueMovies = Array.from(
       new Map(movies.map(m => [m.id, m])).values()
     );
 
-    // Remove future movies
     const today = new Date().toISOString().split("T")[0];
 
-    const releasedMovies = uniqueMovies.filter(m =>
-      m.release_date && m.release_date <= today
-    );
+    const released = uniqueMovies
+      .filter(m => m.release_date && m.release_date <= today)
+      .sort((a, b) => new Date(b.release_date) - new Date(a.release_date));
 
-    // Sort latest → old
-    releasedMovies.sort(
-      (a, b) => new Date(b.release_date) - new Date(a.release_date)
-    );
-
-    res.json(releasedMovies.slice(0, 20));
+    res.json(released.slice(0, 20));
 
   } catch (err) {
     console.error(err.message);
@@ -91,39 +83,48 @@ app.get("/filter", async (req, res) => {
   try {
     let movies = [];
 
-    // 🔥 Fetch multiple pages for more data
-    for (let page = 1; page <= 3; page++) {
-      let url = `${BASE_URL}/discover/movie?api_key=${API_KEY}&page=${page}`;
+    // Fetch more pages for enough data
+    for (let page = 1; page <= 5; page++) {
+      const response = await axios.get(
+        `${BASE_URL}/discover/movie?api_key=${API_KEY}&page=${page}&sort_by=primary_release_date.desc`
+      );
 
-      if (genre) {
-        url += `&with_genres=${genre}`;
-      }
-
-      if (language) {
-        url += `&with_original_language=${language}`;
-      }
-
-      // ✅ Sort latest first
-      url += `&sort_by=primary_release_date.desc`;
-
-      const response = await axios.get(url);
-
-      const today = new Date().toISOString().split("T")[0];
-
-const filtered = response.data.results.filter(m =>
-  m.release_date && m.release_date <= today
-);
-
-movies = movies.concat(filtered);
+      movies = movies.concat(response.data.results);
     }
 
-    // 🔥 Remove duplicates (important)
+    // Remove duplicates
     const uniqueMovies = Array.from(
       new Map(movies.map(m => [m.id, m])).values()
     );
 
-    // ✅ Take top 12 latest movies
-    res.json(uniqueMovies.slice(0, 12));
+    const today = new Date().toISOString().split("T")[0];
+
+    let filtered = uniqueMovies;
+
+    // ✅ Remove future movies
+    filtered = filtered.filter(m =>
+      m.release_date && m.release_date <= today
+    );
+
+    // ✅ Apply language filter (MANUAL)
+    if (language) {
+      filtered = filtered.filter(m => m.original_language === language);
+    }
+
+    // ✅ Apply genre filter (MANUAL)
+    if (genre) {
+      filtered = filtered.filter(m =>
+        m.genre_ids && m.genre_ids.includes(Number(genre))
+      );
+    }
+
+    // ✅ Sort latest → old
+    filtered.sort(
+      (a, b) => new Date(b.release_date) - new Date(a.release_date)
+    );
+
+    // ✅ Always return enough movies
+    res.json(filtered.slice(0, 20));
 
   } catch (err) {
     console.error(err.message);
