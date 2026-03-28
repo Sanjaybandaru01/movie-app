@@ -32,20 +32,35 @@ app.get("/search", async (req, res) => {
 // ================= LATEST MOVIES =================
 app.get("/latest", async (req, res) => {
   try {
-    const today = new Date();
-    const lastMonth = new Date();
-    lastMonth.setDate(today.getDate() - 15);
-    const formatDate = (date) => date.toISOString().split("T")[0];
+    let movies = [];
 
-    const response = await axios.get(
-      `${BASE_URL}/discover/movie?api_key=${API_KEY}` +
-      `&primary_release_date.gte=${formatDate(lastMonth)}` +
-      `&primary_release_date.lte=${formatDate(today)}` +
-      `&sort_by=primary_release_date.desc` +
-      `&region=IN`
+    // Fetch multiple pages
+    for (let page = 1; page <= 3; page++) {
+      const response = await axios.get(
+        `${BASE_URL}/discover/movie?api_key=${API_KEY}&region=IN&page=${page}&sort_by=primary_release_date.desc`
+      );
+
+      movies = movies.concat(response.data.results);
+    }
+
+    // Remove duplicates
+    const uniqueMovies = Array.from(
+      new Map(movies.map(m => [m.id, m])).values()
     );
 
-    res.json(uniqueMovies.slice(0, 20));
+    // Remove future movies
+    const today = new Date().toISOString().split("T")[0];
+
+    const releasedMovies = uniqueMovies.filter(m =>
+      m.release_date && m.release_date <= today
+    );
+
+    // Sort latest → old
+    releasedMovies.sort(
+      (a, b) => new Date(b.release_date) - new Date(a.release_date)
+    );
+
+    res.json(releasedMovies.slice(0, 20));
 
   } catch (err) {
     console.error(err.message);
@@ -78,7 +93,7 @@ app.get("/filter", async (req, res) => {
 
     // 🔥 Fetch multiple pages for more data
     for (let page = 1; page <= 3; page++) {
-      let url = `${BASE_URL}/discover/movie?api_key=${API_KEY}&region=IN&page=${page}`;
+      let url = `${BASE_URL}/discover/movie?api_key=${API_KEY}&page=${page}`;
 
       if (genre) {
         url += `&with_genres=${genre}`;
