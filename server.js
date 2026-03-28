@@ -101,19 +101,42 @@ app.get("/filter", async (req, res) => {
       new Map(filtered.map(m => [m.id, m])).values()
     );
 
-    // 🔥 Step 4: If less, fill with popular (NO FILTER here)
-    if (filtered.length < 20) {
-      const popularRes = await axios.get(
-        `${BASE_URL}/movie/popular?api_key=${API_KEY}`
-      );
+    // 🔥 If less results, try again WITHOUT date sorting (for genre issue)
+if (filtered.length < 20 && genre) {
+  let extraMovies = [];
 
-      popularRes.data.results.forEach(p => {
-        if (!filtered.find(m => m.id === p.id)) {
-          filtered.push(p);
-        }
-      });
+  for (let page = 1; page <= 2; page++) {
+    let url = `${BASE_URL}/discover/movie?api_key=${API_KEY}&page=${page}`;
+
+    url += `&with_genres=${genre}`;
+
+    if (language) {
+      url += `&with_original_language=${language}`;
     }
 
+    const res2 = await axios.get(url);
+    extraMovies = extraMovies.concat(res2.data.results);
+  }
+
+  extraMovies.forEach(m => {
+    if (!filtered.find(x => x.id === m.id)) {
+      filtered.push(m);
+    }
+  });
+}
+
+// 🔥 Final fallback → popular
+if (filtered.length < 20) {
+  const popularRes = await axios.get(
+    `${BASE_URL}/movie/popular?api_key=${API_KEY}`
+  );
+
+  popularRes.data.results.forEach(p => {
+    if (!filtered.find(m => m.id === p.id)) {
+      filtered.push(p);
+    }
+  });
+}
     // 🔥 Step 5: Sort latest → old
     filtered.sort(
       (a, b) => new Date(b.release_date) - new Date(a.release_date)
